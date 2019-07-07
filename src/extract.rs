@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::io::BufReader;
 use elasticlunr::Index;
 use xml::reader::{EventReader, XmlEvent};
