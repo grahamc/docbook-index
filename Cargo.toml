@@ -1,0 +1,10 @@
+[package]
+name = "docbook-index"
+version = "0.1.0"
+authors = ["Graham Christensen <graham@grahamc.com>"]
+edition = "2018"
+
+[dependencies]
+xml-rs = "0.8.0"
+elasticlunr-rs = "2.3.5"
+glob = "0.3.0"
