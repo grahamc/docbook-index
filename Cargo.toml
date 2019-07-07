@@ -3,6 +3,16 @@ name = "docbook-index"
 version = "0.1.0"
 authors = ["Graham Christensen <graham@grahamc.com>"]
 edition = "2018"
+license = "Apache-2.0"
+homepage = "https://github.com/grahamc/docbook-index"
+documentation = "https://github.com/grahamc/docbook-index"
+repository = "https://github.com/grahamc/docbook-index"
+keywords = [ "docbook", "xml", "search", "index", "elasticlunr" ]
+description = """
+Index a DocBook project in to an elasticlunr-compatible JSON index,
+for use in static-site XHTML sites.
+"""
+
 
 [dependencies]
 xml-rs = "0.8.0"
