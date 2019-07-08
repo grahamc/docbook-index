@@ -9,6 +9,59 @@ use xml::namespace::Namespace;
 use xml::attribute::OwnedAttribute;
 use crate::fileindex;
 
+struct TitleBuilder {
+    title: Option<String>,
+    position: StackPosition<()>
+}
+
+impl TitleBuilder {
+    fn new() -> TitleBuilder {
+        TitleBuilder {
+            title: None,
+            position: StackPosition::new(),
+        }
+    }
+
+    fn in_title(&self) -> bool {
+        self.title.is_some() &&
+        self.position.current().is_some()
+    }
+
+    fn enter(&mut self) {
+        if self.in_title() {
+            panic!("Entering a new title when we are already in a title");
+        }
+
+        self.position.enter(());
+        self.title = Some(String::new());
+        self.position.dive();
+    }
+
+    fn dive(&mut self) {
+        self.position.dive();
+    }
+
+    fn surface(&mut self) -> Option<String> {
+        if self.in_title() && self.position.surface().is_some() {
+            let title = self.title.take();
+            self.title = Some(String::new());
+            title
+        } else {
+            None
+        }
+    }
+
+    fn record(&mut self, fragment: &str) {
+        if let Some(ref mut title) = &mut self.title {
+            title.extend(fragment.chars()); // !!! what is the way to do this?
+        } else {
+            panic!("Tried to record title bytes without being in a title");
+        }
+    }
+
+
+}
+
 struct StackPosition<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone> {
     stack: Vec<T>,
     depth: HashMap<T, u8>,
@@ -60,9 +113,8 @@ pub struct IndexBuilder {
     ids: StackPosition<String>,
     id_text: HashMap<String, String>,
 
+    title_builder: TitleBuilder,
     titles: StackPosition<String>,
-
-    content_is_title: bool,
 
     file_map: fileindex::Map,
 
@@ -82,9 +134,8 @@ impl IndexBuilder {
             ids: StackPosition::new(),
             id_text: HashMap::new(),
 
+            title_builder: TitleBuilder::new(),
             titles: StackPosition::new(),
-
-            content_is_title: false,
 
             file_map: file_map,
         }
@@ -128,7 +179,12 @@ impl IndexBuilder {
     }
 
     fn handle_start_element(&mut self, name: OwnedName, attributes: Vec<OwnedAttribute>, _namespace: Namespace) {
-        self.content_is_title = name.local_name == "title";
+        match (self.title_builder.in_title(), name.local_name.as_ref()) {
+            (false, "title") => self.title_builder.enter(),
+            (true, "title") => unreachable!("Entered a title while already in a title!"),
+            (true, _) => self.title_builder.dive(),
+            (false, _) => (),
+        }
 
         for attr in attributes.iter() {
             if attr.name.local_name == "id"
@@ -149,6 +205,14 @@ impl IndexBuilder {
     }
 
     fn handle_end_element(&mut self, _name: OwnedName) {
+        if let Some(title) = self.title_builder.surface() {
+            self.titles.enter(title);
+            self.titles.dive();
+            self.titles.dive(); // Dive an extr atime because titles are
+            // for the content after it, even outside of the </title>
+            // does this not make sense now that we handle the </title>?q
+        }
+
         if let Some(id) = self.ids.surface() {
             if let Some(text) =  self.id_text.get(&id) {
                 let filename = self.file_map.get(&id)
@@ -167,10 +231,8 @@ impl IndexBuilder {
         self.titles.surface();
     }
     fn handle_characters(&mut self, text: String) {
-        if self.content_is_title {
-            self.titles.enter(text.clone());
-            self.titles.dive();
-            self.titles.dive(); // ??
+        if self.title_builder.in_title() {
+            self.title_builder.record(&text);
         }
 
         if let Some(id) = self.ids.current() {

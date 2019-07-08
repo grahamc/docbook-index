@@ -1,0 +1,124 @@
+{
+  "fields": [
+    "title",
+    "body"
+  ],
+  "pipeline": [
+    "trimmer",
+    "stopWordFilter",
+    "stemmer"
+  ],
+  "ref": "id",
+  "version": "0.9.5",
+  "index": {
+    "body": {
+      "root": {
+        "docs": {},
+        "df": 0,
+        "b": {
+          "docs": {},
+          "df": 0,
+          "a": {
+            "docs": {},
+            "df": 0,
+            "r": {
+              "docs": {
+                "example.html#example": {
+                  "tf": 1.4142135623730951
+                }
+              },
+              "df": 1
+            }
+          },
+          "o": {
+            "docs": {},
+            "df": 0,
+            "g": {
+              "docs": {},
+              "df": 0,
+              "u": {
+                "docs": {
+                  "example.html#example": {
+                    "tf": 1
+                  }
+                },
+                "df": 1
+              }
+            }
+          }
+        },
+        "f": {
+          "docs": {},
+          "df": 0,
+          "o": {
+            "docs": {},
+            "df": 0,
+            "o": {
+              "docs": {
+                "example.html#example": {
+                  "tf": 1.4142135623730951
+                }
+              },
+              "df": 1
+            }
+          }
+        }
+      }
+    },
+    "title": {
+      "root": {
+        "docs": {},
+        "df": 0,
+        "b": {
+          "docs": {},
+          "df": 0,
+          "a": {
+            "docs": {},
+            "df": 0,
+            "r": {
+              "docs": {
+                "example.html#example": {
+                  "tf": 1
+                }
+              },
+              "df": 1
+            }
+          }
+        },
+        "f": {
+          "docs": {},
+          "df": 0,
+          "o": {
+            "docs": {},
+            "df": 0,
+            "o": {
+              "docs": {
+                "example.html#example": {
+                  "tf": 1
+                }
+              },
+              "df": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "documentStore": {
+    "save": true,
+    "docs": {
+      "example.html#example": {
+        "body": " foo  bar bogus",
+        "id": "example.html#example",
+        "title": "foo bar"
+      }
+    },
+    "docInfo": {
+      "example.html#example": {
+        "body": 3,
+        "title": 2
+      }
+    },
+    "length": 1
+  }
+}
