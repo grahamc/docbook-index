@@ -24,7 +24,7 @@
             "r": {
               "docs": {
                 "example.html#example": {
-                  "tf": 1.4142135623730951
+                  "tf": 1
                 }
               },
               "df": 1
@@ -56,7 +56,7 @@
             "o": {
               "docs": {
                 "example.html#example": {
-                  "tf": 1.4142135623730951
+                  "tf": 1
                 }
               },
               "df": 1
@@ -108,14 +108,14 @@
     "save": true,
     "docs": {
       "example.html#example": {
-        "body": " foo  bar bogus",
+        "body": " bogus",
         "id": "example.html#example",
         "title": "foo bar"
       }
     },
     "docInfo": {
       "example.html#example": {
-        "body": 3,
+        "body": 1,
         "title": 2
       }
     },

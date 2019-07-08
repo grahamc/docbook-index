@@ -24,7 +24,7 @@
             "r": {
               "docs": {
                 "example.html#in-scope": {
-                  "tf": 1.4142135623730951
+                  "tf": 1
                 }
               },
               "df": 1
@@ -40,7 +40,7 @@
             "o": {
               "docs": {
                 "example.html#in-scope": {
-                  "tf": 1.4142135623730951
+                  "tf": 1
                 }
               },
               "df": 1
@@ -135,7 +135,7 @@
     "save": true,
     "docs": {
       "example.html#in-scope": {
-        "body": " foo  bar in scope",
+        "body": " in scope",
         "id": "example.html#in-scope",
         "title": "foo bar"
       },
@@ -147,7 +147,7 @@
     },
     "docInfo": {
       "example.html#in-scope": {
-        "body": 3,
+        "body": 1,
         "title": 2
       },
       "example.html#out-of-scope": {

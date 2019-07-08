@@ -234,9 +234,7 @@ impl IndexBuilder {
     fn handle_characters(&mut self, text: String) {
         if self.title_builder.in_title() {
             self.title_builder.record(&text);
-        }
-
-        if let Some(id) = self.ids.current() {
+        } else if let Some(id) = self.ids.current() {
             let stored_txt = self.id_text.entry(id.clone())
                 .or_insert(String::from(""));
 

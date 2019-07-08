@@ -154,7 +154,7 @@
                         "t": {
                           "docs": {
                             "chap-contributing.html#chap-contributing": {
-                              "tf": 1.4142135623730951
+                              "tf": 1
                             }
                           },
                           "df": 1
@@ -235,7 +235,7 @@
                       "t": {
                         "docs": {
                           "chap-contributing.html#chap-contributing": {
-                            "tf": 1.4142135623730951
+                            "tf": 1
                           }
                         },
                         "df": 1
@@ -1068,14 +1068,14 @@
     "save": true,
     "docs": {
       "chap-contributing.html#chap-contributing": {
-        "body": " Contributing to this documentation \n  The DocBook sources of the Nixpkgs manual are in the\n   doc \n  subdirectory of the Nixpkgs repository.\n  \n  You can quickly check your edits with  make :\n  $  cd /path/to/nixpkgs/doc\n $  nix-shell\n [nix-shell]$  make\n \n  If you experience problems, run  make debug  to help\n  understand the docbook errors.\n  \n  After making modifications to the manual, it's important to build it before\n  committing. You can do that as follows:\n $  cd /path/to/nixpkgs/doc\n $  nix-shell\n [nix-shell]$  make clean\n [nix-shell]$  nix-build .\n \n  If the build succeeds, the manual will be in\n   ./result/share/doc/nixpkgs/manual.html .\n ",
+        "body": " \n  The DocBook sources of the Nixpkgs manual are in the\n   doc \n  subdirectory of the Nixpkgs repository.\n  \n  You can quickly check your edits with  make :\n  $  cd /path/to/nixpkgs/doc\n $  nix-shell\n [nix-shell]$  make\n \n  If you experience problems, run  make debug  to help\n  understand the docbook errors.\n  \n  After making modifications to the manual, it's important to build it before\n  committing. You can do that as follows:\n $  cd /path/to/nixpkgs/doc\n $  nix-shell\n [nix-shell]$  make clean\n [nix-shell]$  nix-build .\n \n  If the build succeeds, the manual will be in\n   ./result/share/doc/nixpkgs/manual.html .\n ",
         "id": "chap-contributing.html#chap-contributing",
         "title": "Contributing to this documentation"
       }
     },
     "docInfo": {
       "chap-contributing.html#chap-contributing": {
-        "body": 55,
+        "body": 53,
         "title": 2
       }
     },
