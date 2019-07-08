@@ -1,0 +1,6 @@
+<chapter xmlns="http://docbook.org/ns/docbook"
+         xmlns:xlink="http://www.w3.org/1999/xlink"
+         xml:id="example">
+ <title>foo <literal>bar</literal></title>
+ <para>bogus</para>
+</chapter>
