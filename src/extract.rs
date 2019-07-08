@@ -208,9 +208,10 @@ impl IndexBuilder {
         if let Some(title) = self.title_builder.surface() {
             self.titles.enter(title);
             self.titles.dive();
-            self.titles.dive(); // Dive an extr atime because titles are
-            // for the content after it, even outside of the </title>
-            // does this not make sense now that we handle the </title>?q
+            // Dive an extra time because titles are for the content
+            // after the </title>. Note this is needed because later
+            // we unconditionally titles.surface ()
+            self.titles.dive();
         }
 
         if let Some(id) = self.ids.surface() {
