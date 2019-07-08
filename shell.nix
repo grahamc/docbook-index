@@ -1,4 +1,4 @@
 with import <nixpkgs> {};
 pkgs.mkShell {
-  buildInputs = [ cargo ];
+  buildInputs = [ cargo carnix jq ];
 }
