@@ -1,0 +1,160 @@
+{
+  "fields": [
+    "title",
+    "body"
+  ],
+  "pipeline": [
+    "trimmer",
+    "stopWordFilter",
+    "stemmer"
+  ],
+  "ref": "id",
+  "version": "0.9.5",
+  "index": {
+    "body": {
+      "root": {
+        "docs": {},
+        "df": 0,
+        "b": {
+          "docs": {},
+          "df": 0,
+          "a": {
+            "docs": {},
+            "df": 0,
+            "r": {
+              "docs": {
+                "example.html#in-scope": {
+                  "tf": 1.4142135623730951
+                }
+              },
+              "df": 1
+            }
+          }
+        },
+        "f": {
+          "docs": {},
+          "df": 0,
+          "o": {
+            "docs": {},
+            "df": 0,
+            "o": {
+              "docs": {
+                "example.html#in-scope": {
+                  "tf": 1.4142135623730951
+                }
+              },
+              "df": 1
+            }
+          }
+        },
+        "o": {
+          "docs": {},
+          "df": 0,
+          "u": {
+            "docs": {},
+            "df": 0,
+            "t": {
+              "docs": {
+                "example.html#out-of-scope": {
+                  "tf": 1
+                }
+              },
+              "df": 1
+            }
+          }
+        },
+        "s": {
+          "docs": {},
+          "df": 0,
+          "c": {
+            "docs": {},
+            "df": 0,
+            "o": {
+              "docs": {},
+              "df": 0,
+              "p": {
+                "docs": {},
+                "df": 0,
+                "e": {
+                  "docs": {
+                    "example.html#in-scope": {
+                      "tf": 1
+                    },
+                    "example.html#out-of-scope": {
+                      "tf": 1
+                    }
+                  },
+                  "df": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "title": {
+      "root": {
+        "docs": {},
+        "df": 0,
+        "b": {
+          "docs": {},
+          "df": 0,
+          "a": {
+            "docs": {},
+            "df": 0,
+            "r": {
+              "docs": {
+                "example.html#in-scope": {
+                  "tf": 1
+                }
+              },
+              "df": 1
+            }
+          }
+        },
+        "f": {
+          "docs": {},
+          "df": 0,
+          "o": {
+            "docs": {},
+            "df": 0,
+            "o": {
+              "docs": {
+                "example.html#in-scope": {
+                  "tf": 1
+                }
+              },
+              "df": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "documentStore": {
+    "save": true,
+    "docs": {
+      "example.html#in-scope": {
+        "body": " foo  bar in scope",
+        "id": "example.html#in-scope",
+        "title": "foo bar"
+      },
+      "example.html#out-of-scope": {
+        "body": " OUT OF SCOPE",
+        "id": "example.html#out-of-scope",
+        "title": ""
+      }
+    },
+    "docInfo": {
+      "example.html#in-scope": {
+        "body": 3,
+        "title": 2
+      },
+      "example.html#out-of-scope": {
+        "body": 2,
+        "title": 0
+      }
+    },
+    "length": 2
+  }
+}
