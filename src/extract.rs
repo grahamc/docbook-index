@@ -62,6 +62,71 @@ impl TitleBuilder {
 
 }
 
+struct TermBuilder {
+    term: Option<String>,
+    position: StackPosition<()>
+}
+
+impl TermBuilder {
+    fn new() -> TermBuilder {
+        TermBuilder {
+            term: None,
+            position: StackPosition::new(),
+        }
+    }
+
+    fn in_term(&self) -> bool {
+        self.term.is_some() &&
+        self.position.current().is_some()
+    }
+
+    fn sibling_to_term(&self) -> bool {
+        if ! self.in_term() {
+            return false;
+        }
+
+        if let Some(1) = self.position.depth() {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn enter(&mut self) {
+        if self.in_term() {
+            // panic!("Entering a new term when we are already in a term");
+        }
+
+        self.position.enter(());
+        self.term = Some(String::new());
+        self.position.dive();
+    }
+
+    fn dive(&mut self) {
+        self.position.dive();
+    }
+
+    fn surface(&mut self) -> Option<String> {
+        if self.in_term() && self.position.surface().is_some() {
+            let term = self.term.take();
+            self.term = Some(String::new());
+            term
+        } else {
+            None
+        }
+    }
+
+    fn record(&mut self, fragment: &str) {
+        if let Some(ref mut term) = &mut self.term {
+            term.extend(fragment.chars()); // !!! what is the way to do this?
+        } else {
+            panic!("Tried to record term bytes without being in a term");
+        }
+    }
+
+
+}
+
 struct StackPosition<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone> {
     stack: Vec<T>,
     depth: HashMap<T, u8>,
@@ -87,6 +152,10 @@ impl <T: std::cmp::Eq + std::hash::Hash + std::clone::Clone>StackPosition<T> {
         }
     }
 
+    fn depth(&self) -> Option<&u8> {
+        self.depth.get(self.stack.last()?)
+    }
+
     fn current(&self) -> Option<&T> {
         self.stack.last()
     }
@@ -107,6 +176,8 @@ impl <T: std::cmp::Eq + std::hash::Hash + std::clone::Clone>StackPosition<T> {
     }
 }
 
+
+
 pub struct IndexBuilder {
     index: Index,
 
@@ -115,6 +186,10 @@ pub struct IndexBuilder {
 
     title_builder: TitleBuilder,
     titles: StackPosition<String>,
+
+    term_builder: TermBuilder,
+    terms: StackPosition<String>,
+    just_captured_term: bool,
 
     file_map: fileindex::Map,
 
@@ -136,6 +211,10 @@ impl IndexBuilder {
 
             title_builder: TitleBuilder::new(),
             titles: StackPosition::new(),
+
+            term_builder: TermBuilder::new(),
+            terms: StackPosition::new(),
+            just_captured_term: false,
 
             file_map: file_map,
         }
@@ -175,7 +254,6 @@ impl IndexBuilder {
                 }
             }
         }
-
     }
 
     fn handle_start_element(&mut self, name: OwnedName, attributes: Vec<OwnedAttribute>, _namespace: Namespace) {
@@ -186,16 +264,33 @@ impl IndexBuilder {
             (false, _) => (),
         }
 
+        if name.local_name == String::from("term") {
+            if self.term_builder.sibling_to_term() {
+                let term = self.term_builder.surface().expect("hi");
+                self.term_builder.enter();
+                self.term_builder.record(&term);
+            } else {
+                self.term_builder.enter();
+            }
+        }
+        if self.term_builder.in_term() {
+            self.term_builder.dive();
+        }
+
         for attr in attributes.iter() {
             if attr.name.local_name == "id"
                 && attr.name.namespace == Some(String::from("http://www.w3.org/XML/1998/namespace"))
             {
                 self.ids.enter(attr.value.clone());
+                if name.local_name == "term" {
+                    self.ids.dive();
+                }
             }
         }
 
         self.ids.dive();
         self.titles.dive();
+        self.terms.dive();
 
         if name.local_name == "include"
             && name.namespace == Some("http://www.w3.org/2001/XInclude".to_string())
@@ -204,7 +299,7 @@ impl IndexBuilder {
         }
     }
 
-    fn handle_end_element(&mut self, _name: OwnedName) {
+    fn handle_end_element(&mut self, name: OwnedName) {
         if let Some(title) = self.title_builder.surface() {
             self.titles.enter(title);
             self.titles.dive();
@@ -214,26 +309,57 @@ impl IndexBuilder {
             self.titles.dive();
         }
 
+        if let Some(term) = self.term_builder.surface() {
+            self.terms.enter(term);
+            self.terms.dive();
+            // Dive an extra time because terms are for the content
+            // after the </term>. Note this is needed because later
+            // we unconditionally titles.surface ()
+            self.terms.dive();
+        }
+
         if let Some(id) = self.ids.surface() {
-            if let Some(text) =  self.id_text.get(&id) {
-                let filename = self.file_map.get(&id)
-                    .expect(&format!("Somehow, we found an ID ({}) which is not in the output document", id));
+            if let Some(text) = self.id_text.get(&id) {
+                let title = self.titles.current();
+                let term = self.terms.current();
+                println!("{:#?}", term);
 
-                let default = String::from("");
-                let title = self.titles.current().unwrap_or(&default);
-                println!("title: {:?}", title);
+                let index_title = match (title, term) {
+                    (Some(title), Some(term)) => format!("{}: {}", title, term),
+                    (Some(title), None) => title.to_owned(),
+                    (None, Some(term)) => term.to_owned(),
+                    (None, None) => "".to_owned(),
+                };
+                if let Some(filename) = self.file_map.get(&id) {
+                    println!("Adding index entry for {} (ID {})", index_title, id);
+                    if id == "opt-zramSwap.swapDevices" {
+                        println!("title: {}", index_title);
+                        println!("text: {}", text);
+                    } else if id == "configuration-variable-list" {
+                        println!("Skipping this big fucker");
+                        //println!("title: {}", title);
+                        //println!("text: {}", text);
 
-                self.index.add_doc(&format!("{}#{}", filename.display(), id), &[title, text]);
+                    } else {
+                        self.index.add_doc(&format!("{}#{}", filename.display(), id), &[&index_title, text]);
+                        //println!("Finished adding index entry for ID {}", id);
+                    }
+                } else {
+                    println!("Somehow, we found an ID ({}) which is not in the output document. Nearest title: {}, Lost text: {}", id, index_title, text);
+                }
             } else {
                 println!("No documentation text found for ID {}", id);
             }
         }
 
         self.titles.surface();
+        self.terms.surface();
     }
     fn handle_characters(&mut self, text: String) {
         if self.title_builder.in_title() {
             self.title_builder.record(&text);
+        } else if self.term_builder.in_term() {
+            self.term_builder.record(&text);
         } else if let Some(id) = self.ids.current() {
             let stored_txt = self.id_text.entry(id.clone())
                 .or_insert(String::from(""));
