@@ -181,6 +181,7 @@ impl IndexBuilder {
     fn handle_start_element(&mut self, name: OwnedName, attributes: Vec<OwnedAttribute>, _namespace: Namespace) {
         match (self.title_builder.in_title(), name.local_name.as_ref()) {
             (false, "title") => self.title_builder.enter(),
+            (false, "term") => self.title_builder.enter(),
             (true, "title") => unreachable!("Entered a title while already in a title!"),
             (true, _) => self.title_builder.dive(),
             (false, _) => (),
@@ -191,6 +192,9 @@ impl IndexBuilder {
                 && attr.name.namespace == Some(String::from("http://www.w3.org/XML/1998/namespace"))
             {
                 self.ids.enter(attr.value.clone());
+                if name.local_name == "term" || name.local_name == "title" {
+                    self.ids.dive(); // extra dive since term and title comes before the content
+                }
             }
         }
 
@@ -216,14 +220,15 @@ impl IndexBuilder {
 
         if let Some(id) = self.ids.surface() {
             if let Some(text) =  self.id_text.get(&id) {
-                let filename = self.file_map.get(&id)
-                    .expect(&format!("Somehow, we found an ID ({}) which is not in the output document", id));
+                if let Some(filename) = self.file_map.get(&id) {
+                    let default = String::from("");
+                    let title = self.titles.current().unwrap_or(&default);
+                    println!("title: {:?}", title);
 
-                let default = String::from("");
-                let title = self.titles.current().unwrap_or(&default);
-                println!("title: {:?}", title);
-
-                self.index.add_doc(&format!("{}#{}", filename.display(), id), &[title, text]);
+                    self.index.add_doc(&format!("{}#{}", filename.display(), id), &[title, text]);
+                } else {
+                    println!("Somehow, we found an ID ({}) which is not in the output document", id);
+                }
             } else {
                 println!("No documentation text found for ID {}", id);
             }
