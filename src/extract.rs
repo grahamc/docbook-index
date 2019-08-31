@@ -9,65 +9,135 @@ use xml::namespace::Namespace;
 use xml::attribute::OwnedAttribute;
 use crate::fileindex;
 
-struct TitleBuilder {
-    title: Option<String>,
-    position: StackPosition<()>
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
+enum Context {
+    Title,
+    Term,
+    Id,
+    Text,
 }
 
-impl TitleBuilder {
-    fn new() -> TitleBuilder {
-        TitleBuilder {
-            title: None,
-            position: StackPosition::new(),
+#[derive(Debug)]
+struct ContextBuilder {
+    context_stack: StackPosition<Vec<(Context, String)>>,
+    collection_stack: StackPosition<Context>,
+    in_progress: Option<String>,
+}
+
+impl ContextBuilder {
+    fn new() -> Self {
+        Self {
+            context_stack: StackPosition::new(),
+            collection_stack: StackPosition::new(),
+            in_progress: Some(String::new()),
         }
     }
 
-    fn in_title(&self) -> bool {
-        self.title.is_some() &&
-        self.position.current().is_some()
-    }
+    pub fn collect_for_siblings<'a>(&mut self, ctx: Context, id: Option<&'a str>) {
+        self.enter();
 
-    fn enter(&mut self) {
-        if self.in_title() {
-            panic!("Entering a new title when we are already in a title");
+        let parent = self.collection_stack.parent_mut().expect("Should never be without parental context");
+        //if parent.is_some() {
+        //    panic!("Oh gosh, collecting parental context but we're already collecting parental context.");
+        //}
+        *parent = ctx;
+        //println!("context for parent: {:#?}", parent);
+
+        // add context to the parent element
+        if let Some(id) = id {
+            let parent = self.context_stack.parent_mut().expect("Should never be without a parent in the context stack");
+            parent.push((Context::Id, id.to_string()));
+            //println!("id for parent: {:#?}", parent);
         }
-
-        self.position.enter(());
-        self.title = Some(String::new());
-        self.position.dive();
     }
 
-    fn dive(&mut self) {
-        self.position.dive();
+    pub fn collect_for_children<'a>(&mut self, ctx: Context, id: Option<&'a str>) {
+        self.enter();
+
+        let current = self.collection_stack.current_mut().expect("Should never be without parental context");
+        *current = ctx;
+
+        if let Some(id) = id {
+            let current = self.context_stack.current_mut().expect("Should never be without a current in the context stack");
+            current.push((Context::Id, id.to_string()));
+        }
     }
 
-    fn surface(&mut self) -> Option<String> {
-        if self.in_title() && self.position.surface().is_some() {
-            let title = self.title.take();
-            self.title = Some(String::new());
-            title
+    pub fn id_for_children<'a>(&mut self, id: &'a str) {
+        self.enter();
+        // add context to the parent element
+        if let Some(current) = self.context_stack.current_mut() {
+            current.push((Context::Id, id.to_string()));
+            //println!("id for children: {:#?}", current);
+        }
+    }
+
+    pub fn enter(&mut self) {
+        self.reset_in_progress();
+        self.context_stack.enter(vec![]);
+        self.collection_stack.enter(Context::Text);
+        self.dive();
+    }
+
+    pub fn dive(&mut self) {
+        self.context_stack.dive();
+        self.collection_stack.dive();
+    }
+
+    pub fn record(&mut self, data: &str) {
+        // println!("Recorded text '{:#?}' for context {:#?}", data, self.collection_stack.current());
+        self.in_progress.as_mut().unwrap().push_str(data);
+    }
+
+    pub fn reset_in_progress(&mut self) -> Option<()> {
+        match self.collection_stack.current_mut()? {
+            Context::Title => {
+                let inprogress = self.in_progress.take().unwrap();
+                self.in_progress = Some(String::new());
+
+                self.context_stack.parent_mut().unwrap().push((Context::Title, inprogress));
+            },
+            Context::Term => {
+                let inprogress = self.in_progress.take().unwrap();
+                self.in_progress = Some(String::new());
+
+                self.context_stack.parent_mut().unwrap().push((Context::Term, inprogress));
+            },
+            Context::Text => {
+                let inprogress = self.in_progress.take().unwrap();
+                self.in_progress = Some(String::new());
+
+                self.context_stack.current_mut().unwrap().push((Context::Text, inprogress));
+            },
+            Context::Id => {
+                unreachable!("wat?");
+            },
+        }
+        Some(())
+    }
+
+    pub fn surface(&mut self) -> Option<Vec<(Context, String)>> {
+        self.reset_in_progress()?;
+        let ctx = self.context_stack.surface()?;
+
+        // Only return data if the current context has an ID, otherwise
+        // re-home it to the parent context
+        if ctx.iter().any(|(ctx, _)| ctx == &Context::Id) {
+            Some(ctx)
         } else {
+            self.context_stack.current_mut().unwrap().extend(ctx);
             None
         }
     }
-
-    fn record(&mut self, fragment: &str) {
-        if let Some(ref mut title) = &mut self.title {
-            title.extend(fragment.chars()); // !!! what is the way to do this?
-        } else {
-            panic!("Tried to record title bytes without being in a title");
-        }
-    }
-
-
 }
 
-struct StackPosition<T: std::cmp::Eq + std::hash::Hash + std::clone::Clone> {
+#[derive(Debug)]
+struct StackPosition<T: std::cmp::Eq + std::fmt::Debug + std::hash::Hash + std::clone::Clone> {
     stack: Vec<T>,
-    depth: HashMap<T, u8>,
+    depth: HashMap<usize, u8>,
 }
 
-impl <T: std::cmp::Eq + std::hash::Hash + std::clone::Clone>StackPosition<T> {
+impl <T: std::fmt::Debug + std::cmp::Eq + std::hash::Hash + std::clone::Clone>StackPosition<T> {
     fn new() -> StackPosition<T> {
         StackPosition {
             stack: vec![],
@@ -77,12 +147,15 @@ impl <T: std::cmp::Eq + std::hash::Hash + std::clone::Clone>StackPosition<T> {
 
     fn enter(&mut self, value: T) {
         self.stack.push(value.clone());
-        self.depth.entry(value).or_insert(0);
+        let len = self.stack.len();
+        self.depth.entry(len).or_insert(0);
     }
 
     fn dive(&mut self) {
+        let pos = self.stack.len();
         if let Some(top) = self.stack.last() {
-            let depth = self.depth.get_mut(top).unwrap();
+            let depth = self.depth.get_mut(&pos).unwrap();
+            //println!("Depth: {:#?}", depth);
             *depth += 1
         }
     }
@@ -91,10 +164,25 @@ impl <T: std::cmp::Eq + std::hash::Hash + std::clone::Clone>StackPosition<T> {
         self.stack.last()
     }
 
+    fn current_mut(&mut self) -> Option<&mut T> {
+        self.stack.last_mut()
+    }
+
+    fn parent_mut(&mut self) -> Option<&mut T> {
+        let len = self.stack.len();
+        if len == 0 {
+            None
+        } else {
+            self.stack.get_mut(len - 1)
+        }
+    }
+
     fn surface(&mut self) -> Option<T> {
+        let pos = self.stack.len();
         if let Some(top) = self.stack.last() {
-            let depth = self.depth.get_mut(top).unwrap();
+            let depth = self.depth.get_mut(&pos).unwrap();
             *depth -= 1;
+            //println!("Surfacing from top: {:#?} with depth: {:#?}", top, depth);
 
             if *depth == 0 {
                 Some(self.stack.pop().unwrap())
@@ -107,14 +195,11 @@ impl <T: std::cmp::Eq + std::hash::Hash + std::clone::Clone>StackPosition<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct IndexBuilder {
     index: Index,
 
-    ids: StackPosition<String>,
-    id_text: HashMap<String, String>,
-
-    title_builder: TitleBuilder,
-    titles: StackPosition<String>,
+    context_builder: ContextBuilder,
 
     file_map: fileindex::Map,
 
@@ -131,11 +216,7 @@ impl IndexBuilder {
         IndexBuilder {
             index: Index::new(&["title", "body"]),
 
-            ids: StackPosition::new(),
-            id_text: HashMap::new(),
-
-            title_builder: TitleBuilder::new(),
-            titles: StackPosition::new(),
+            context_builder: ContextBuilder::new(),
 
             file_map: file_map,
         }
@@ -147,7 +228,13 @@ impl IndexBuilder {
 
         let parser = EventReader::new(file);
 
+        let mut seen: u64 = 0;
         for event in parser {
+            seen += 1;
+            if false  && seen > 100 {
+                println!("{:#?}", self);
+                panic!();
+            }
             match event {
                 Ok(XmlEvent::StartElement { name, attributes, namespace }) => {
                     self.handle_start_element(name, attributes, namespace);
@@ -179,23 +266,23 @@ impl IndexBuilder {
     }
 
     fn handle_start_element(&mut self, name: OwnedName, attributes: Vec<OwnedAttribute>, _namespace: Namespace) {
-        match (self.title_builder.in_title(), name.local_name.as_ref()) {
-            (false, "title") => self.title_builder.enter(),
-            (true, "title") => unreachable!("Entered a title while already in a title!"),
-            (true, _) => self.title_builder.dive(),
-            (false, _) => (),
-        }
+        // println!("Starting {:?}#", name);
+        let id: Option<&str> = attributes
+            .iter()
+            .filter(|attr|
+                    attr.name.local_name == "id"
+                    && attr.name.namespace
+                    .as_ref()
+                    .map(|s| s.as_ref()) == Some("http://www.w3.org/XML/1998/namespace")
+            ).map(|attr| attr.value.as_ref())
+            .next();
 
-        for attr in attributes.iter() {
-            if attr.name.local_name == "id"
-                && attr.name.namespace == Some(String::from("http://www.w3.org/XML/1998/namespace"))
-            {
-                self.ids.enter(attr.value.clone());
-            }
+        match (name.local_name.as_ref(), id) {
+            ("title", id) => self.context_builder.collect_for_siblings(Context::Title, id),
+            ("term", id) => self.context_builder.collect_for_siblings(Context::Term, id),
+            (_, id) => self.context_builder.collect_for_children(Context::Text, id),
+            // (_, None) => self.context_builder.collect_for_children(Context::Text, None),
         }
-
-        self.ids.dive();
-        self.titles.dive();
 
         if name.local_name == "include"
             && name.namespace == Some("http://www.w3.org/2001/XInclude".to_string())
@@ -205,14 +292,12 @@ impl IndexBuilder {
     }
 
     fn handle_end_element(&mut self, _name: OwnedName) {
-        if let Some(title) = self.title_builder.surface() {
-            self.titles.enter(title);
-            self.titles.dive();
-            // Dive an extra time because titles are for the content
-            // after the </title>. Note this is needed because later
-            // we unconditionally titles.surface ()
-            self.titles.dive();
+        //println!("Ending {:?}#", _name);
+        if let Some(ctx) = self.context_builder.surface() {
+            println!("Context: {:#?}", ctx);
         }
+
+        /*
 
         if let Some(id) = self.ids.surface() {
             if let Some(text) =  self.id_text.get(&id) {
@@ -230,19 +315,10 @@ impl IndexBuilder {
         }
 
         self.titles.surface();
+        */
     }
     fn handle_characters(&mut self, text: String) {
-        if self.title_builder.in_title() {
-            self.title_builder.record(&text);
-        } else if let Some(id) = self.ids.current() {
-            let stored_txt = self.id_text.entry(id.clone())
-                .or_insert(String::from(""));
-
-            stored_txt.push_str(" ");
-            stored_txt.push_str(&text);
-        } else {
-            println!("WARNING: Losing orphaned text: {:?}", text);
-        }
+        self.context_builder.record(&text);
     }
 
 }
