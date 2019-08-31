@@ -30,14 +30,14 @@ impl IndexMap {
             .expect(&format!("trying to enter {:?}", root));
 
         let mut map: Map = HashMap::new();
-        /*for entry in glob("./**/*.html").unwrap() {
+        for entry in glob("./**/*.html").unwrap() {
             println!("{:?}", entry);
             let entry = entry.unwrap();
             let parsed = IndexMap::parse(&entry);
             for id in parsed {
                 map.insert(id, entry.clone());
             }
-        }*/
+        }
 
         env::set_current_dir(&original_dir)
             .expect(&format!("trying to return to {:?}", original_dir));
