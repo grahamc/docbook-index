@@ -29,12 +29,16 @@ fn main() {
         file_index
     );
 
-    file.write_all(r#"
+    let js = true;
+    if js {
+        file.write_all(r#"
 window.searchIndexData = "#.as_bytes()).unwrap();
+        file.write_all(index.to_json().as_bytes()).expect("failed to write the index");
 
-    file.write_all(index.to_json().as_bytes()).expect("failed to write the index");
         file.write_all(r#"
 ;
 "#.as_bytes()).unwrap();
-
+    } else {
+        file.write_all(index.to_json_pretty().as_bytes()).expect("failed to write the index");
+    }
 }
