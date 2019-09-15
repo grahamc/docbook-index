@@ -4,6 +4,7 @@ use std::io::Write;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+use std::process::exit;
 mod extract;
 mod fileindex;
 
@@ -12,9 +13,13 @@ mod fileindex;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
 struct Opt {
-    /// Output the index as JSON
+    /// Output the index as JSON. Incompatible with --anchors
     #[structopt(long)]
     json: bool,
+
+    /// Index available anchors. Incompatible with --json
+    #[structopt(long)]
+    anchors: bool,
 
     /// The input XML file
     input_xml: PathBuf,
@@ -29,7 +34,15 @@ struct Opt {
 fn main() {
     let opt = Opt::from_args();
 
-    let json = opt.json;
+    // Last sanity checks
+    if opt.json && opt.anchors {
+        // But why?? For backwards compatibility purpose.
+        // The json document is *only* the elasticlunr index.
+        // Meanwhile, the js document was setting a global variable.
+        // It's trivial to add another global variable it without causing issues.
+        eprintln!("Error: --json and --anchors are not supported together.");
+        exit(64);
+    }
 
     let mut file = File::create(opt.output_file).expect("Failed to open the output file");
 
@@ -37,18 +50,18 @@ fn main() {
     println!("Loaded {} ID-to-file mappings", file_index.len());
     let index = extract::IndexBuilder::build_from(
         Path::new(&opt.input_xml),
-        file_index
+        file_index.clone()
     );
 
-    if json {
+    if opt.json {
         file.write_all(index.to_json_pretty().as_bytes()).expect("failed to write the index");
     } else {
-        file.write_all(r#"
-window.searchIndexData = "#.as_bytes()).unwrap();
-        file.write_all(index.to_json().as_bytes()).expect("failed to write the index");
-
-        file.write_all(r#"
-;
-"#.as_bytes()).unwrap();
+        write!(file, "window.searchIndexData = {};\n", index.to_json())
+            .expect("failed to write the text index");
+        if opt.anchors {
+            let json = serde_json::to_string(&file_index.clone()).unwrap();
+            write!(file, "window.anchorsIndex = {};\n", json)
+                .expect("failed to write the anchors index");
+        }
     }
 }

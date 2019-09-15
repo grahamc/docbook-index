@@ -13,5 +13,6 @@ for corpus in $(find . -mindepth 1 -maxdepth 1 -type d); do
         cargo run -- --json ./*.xml ./ ./out.json.ugly
         jq . < out.json.ugly > out.json
         rm out.json.ugly
+        cargo run -- --anchors ./*.xml ./ ./out.js
     )
 done
