@@ -7,11 +7,11 @@ export RUST_BACKTRACE=1
 cd corpus
 
 for corpus in $(find . -mindepth 1 -maxdepth 1 -type d); do
-    pushd "$corpus"
+    (
+        cd "$corpus"
 
-    cargo run -- ./*.xml ./ ./out.json.ugly
-    jq . < out.json.ugly > out.json
-    rm out.json.ugly
-
-    popd
+        cargo run -- --json ./*.xml ./ ./out.json.ugly
+        jq . < out.json.ugly > out.json
+        rm out.json.ugly
+    )
 done

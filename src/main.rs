@@ -4,21 +4,57 @@ use std::io::Write;
 use std::fs::File;
 use std::path::Path;
 use std::env;
+use std::process::exit;
 mod extract;
 mod fileindex;
 
+// For exit codes in use:
+// https://www.freebsd.org/cgi/man.cgi?query=sysexits<Paste>
+
+fn usage() {
+    // argv0 is always expected.
+    let name = env::args().nth(0).unwrap();
+    println!(r#"
+Usage: {} [options] <input.xml> <generated dir> <output file>
+  <input.xml>     The input XML file
+  <generated dir> The directory containing generated HTML documentation
+  <output file>   The file to write the index
+
+  --json    outputs as json
+"#, name);
+}
+
 fn main() {
-    let input_xml = env::args()
-        .nth(1)
-        .expect("Arg 1 must be the input XML file");
+    // Arguments parsing
 
-    let input_html = env::args()
-        .nth(2)
-        .expect("Arg 2 must be the directory containing generated HTML documentation");
+    // This is a naïve approach to parsing arguments. This only works as
+    // long as `--name value` is not required.
+    let (flags, mut non_flags): (Vec<String>, Vec<String>)
+        = env::args().partition(|arg| arg.chars().next().unwrap() == '-');
 
-    let output = env::args()
-        .nth(3)
-        .expect("Arg 3 must be the file to write the index");
+    // Removes argv0.
+    non_flags.remove(0);
+
+    // First checks whether we print usage.
+    if flags.iter().any(|arg| arg == "--help") {
+        usage();
+        exit(0);
+    }
+
+    // Then sanity checks we have all required arguments.
+    if non_flags.len() != 3 {
+        eprintln!("Error: Missing {} mandatory arguments.", 3 - non_flags.len());
+        usage();
+        exit(64);
+    }
+
+    // Consume parameters
+    let input_xml = non_flags.remove(0);
+    let input_html = non_flags.remove(0);
+    let output = non_flags.remove(0);
+
+    // Then checks for flags
+    let json = flags.iter().any(|arg| arg == "--json");
 
     let mut file = File::create(output).expect("Failed to open the output file");
 
@@ -29,8 +65,9 @@ fn main() {
         file_index
     );
 
-    let js = true;
-    if js {
+    if json {
+        file.write_all(index.to_json_pretty().as_bytes()).expect("failed to write the index");
+    } else {
         file.write_all(r#"
 window.searchIndexData = "#.as_bytes()).unwrap();
         file.write_all(index.to_json().as_bytes()).expect("failed to write the index");
@@ -38,7 +75,5 @@ window.searchIndexData = "#.as_bytes()).unwrap();
         file.write_all(r#"
 ;
 "#.as_bytes()).unwrap();
-    } else {
-        file.write_all(index.to_json_pretty().as_bytes()).expect("failed to write the index");
     }
 }
