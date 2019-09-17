@@ -1,7 +1,6 @@
 use glob::glob;
 use std::fs::{File};
 use std::path::{Path, PathBuf};
-use std::env;
 use std::io::BufReader;
 use xml::reader::{EventReader, XmlEvent};
 use std::collections::HashMap;
@@ -24,13 +23,9 @@ fn get_attr<'a>(name: &str, attributes: &'a Vec<OwnedAttribute>) -> Option<&'a s
 
 impl IndexMap {
     pub fn interpret_from(root: &Path) -> Map {
-        let original_dir = env::current_dir()
-            .expect("trying to get current directory");
-        env::set_current_dir(root)
-            .expect(&format!("trying to enter {:?}", root));
-
         let mut map: Map = HashMap::new();
-        for entry in glob("./**/*.html").unwrap() {
+		let patt = root.join("**/*.html");
+        for entry in glob(patt.to_str().expect("while parsing a path")).unwrap() {
             println!("{:?}", entry);
             let entry = entry.unwrap();
             let parsed = IndexMap::parse(&entry);
@@ -38,10 +33,6 @@ impl IndexMap {
                 map.insert(id, entry.clone());
             }
         }
-
-        env::set_current_dir(&original_dir)
-            .expect(&format!("trying to return to {:?}", original_dir));
-
         map
     }
 
