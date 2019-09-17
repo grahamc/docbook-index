@@ -2,66 +2,41 @@ extern crate glob;
 extern crate xml;
 use std::io::Write;
 use std::fs::File;
-use std::path::Path;
-use std::env;
-use std::process::exit;
+use std::path::{Path, PathBuf};
+use structopt::StructOpt;
 mod extract;
 mod fileindex;
 
-// For exit codes in use:
-// https://www.freebsd.org/cgi/man.cgi?query=sysexits<Paste>
 
-fn usage() {
-    // argv0 is always expected.
-    let name = env::args().nth(0).unwrap();
-    println!(r#"
-Usage: {} [options] <input.xml> <generated dir> <output file>
-  <input.xml>     The input XML file
-  <generated dir> The directory containing generated HTML documentation
-  <output file>   The file to write the index
+/// Index a Docbook file for use with elasticlunr, for Nixpkgs
+#[derive(StructOpt, Debug)]
+#[structopt(name = "basic")]
+struct Opt {
+    /// Output the index as JSON
+    #[structopt(long)]
+    json: bool,
 
-  --json    outputs as json
-"#, name);
+    /// The input XML file
+    input_xml: PathBuf,
+
+    /// The directory containing generated HTML documentation
+    generated_dir: PathBuf,
+
+    /// The file to write the index
+    output_file: PathBuf,
 }
 
 fn main() {
-    // Arguments parsing
+    let opt = Opt::from_args();
 
-    // This is a naïve approach to parsing arguments. This only works as
-    // long as `--name value` is not required.
-    let (flags, mut non_flags): (Vec<String>, Vec<String>)
-        = env::args().partition(|arg| arg.chars().next().unwrap() == '-');
+    let json = opt.json;
 
-    // Removes argv0.
-    non_flags.remove(0);
+    let mut file = File::create(opt.output_file).expect("Failed to open the output file");
 
-    // First checks whether we print usage.
-    if flags.iter().any(|arg| arg == "--help") {
-        usage();
-        exit(0);
-    }
-
-    // Then sanity checks we have all required arguments.
-    if non_flags.len() != 3 {
-        eprintln!("Error: Missing {} mandatory arguments.", 3 - non_flags.len());
-        usage();
-        exit(64);
-    }
-
-    // Consume parameters
-    let input_xml = non_flags.remove(0);
-    let input_html = non_flags.remove(0);
-    let output = non_flags.remove(0);
-
-    // Then checks for flags
-    let json = flags.iter().any(|arg| arg == "--json");
-
-    let mut file = File::create(output).expect("Failed to open the output file");
-
-    let file_index = fileindex::IndexMap::interpret_from(Path::new(&input_html));
+    let file_index = fileindex::IndexMap::interpret_from(Path::new(&opt.generated_dir));
     println!("Loaded {} ID-to-file mappings", file_index.len());
     let index = extract::IndexBuilder::build_from(
-        Path::new(&input_xml),
+        Path::new(&opt.input_xml),
         file_index
     );
 
